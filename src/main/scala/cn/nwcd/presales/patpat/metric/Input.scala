@@ -2,6 +2,7 @@ package cn.nwcd.presales.patpat.metric
 
 import cn.nwcd.presales.common.struct.{EventFlinkInput, FlinkContext}
 import cn.nwcd.presales.patpat.entity.StockRawEvent
+import org.apache.flink.api.common.eventtime.{SerializableTimestampAssigner, WatermarkStrategy}
 import org.apache.flink.api.common.serialization.SimpleStringSchema
 import org.apache.flink.api.scala.createTypeInformation
 import org.apache.flink.streaming.connectors.kinesis.FlinkKinesisConsumer
@@ -33,7 +34,16 @@ trait Input extends EventFlinkInput {
       val name = jsonNode.get("name").asText
       val price = jsonNode.get("price").asDouble
       StockRawEvent(event_time, name, price)
-    }).disableChaining().name("to json")
-    setDataSet("stock_raw_events", events)
+    }).disableChaining().name("toJson")
+
+    val watermarkEvent = events.assignTimestampsAndWatermarks(
+      WatermarkStrategy.forMonotonousTimestamps[StockRawEvent]
+        .withTimestampAssigner(
+          new SerializableTimestampAssigner[StockRawEvent] {
+            override def extractTimestamp(t: StockRawEvent, l: Long): Long = {
+              StockRawEvent.ts(t)
+            }
+          })).disableChaining().name("withWatermark")
+    setDataSet("stock_input_events", watermarkEvent)
   }
 }

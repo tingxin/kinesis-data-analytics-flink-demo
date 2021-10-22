@@ -12,7 +12,7 @@ trait Compute extends EventFlinkCompute {
 
   override def compute(): Unit = {
     super.compute()
-    val rawStockEventDs: DataStream[StockRawEvent] = getDataSet[DataStream[StockRawEvent]]("stock_raw_events")
+    val rawStockEventDs: DataStream[StockRawEvent] = getDataSet[DataStream[StockRawEvent]]("stock_input_events")
     val result = rawStockEventDs
       .keyBy(item=>item.name)
       .timeWindow(Time.seconds(60))

@@ -17,10 +17,10 @@ trait Output extends EventFlinkOutput {
   override def output(): Unit = {
     super.output()
     val ds: DataStream[StockRawEvent] = getDataSet[DataStream[StockRawEvent]]("max_price_ds")
-    val strDs = ds.map(item=>item.toString).disableChaining().name("to string")
+    val strDs = ds.map(item=>item.toString).disableChaining().name("toText")
     val sink:StreamingFileSink[String] = StreamingFileSink.forRowFormat(new Path(Params.OutputS3SinkPath),
       new SimpleStringEncoder[String]("UTF-8")).build()
-    strDs.addSink(sink)
+    strDs.addSink(sink).name("save")
   }
 
 

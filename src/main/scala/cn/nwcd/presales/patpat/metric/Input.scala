@@ -44,6 +44,7 @@ trait Input extends EventFlinkInput {
               StockRawEvent.ts(t)
             }
           })).disableChaining().name("withWatermark")
+
     setDataSet("stock_input_events", watermarkEvent)
   }
 }

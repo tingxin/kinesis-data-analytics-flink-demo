@@ -1,7 +1,7 @@
 package cn.nwcd.presales.patpat.metric
 
 import cn.nwcd.presales.common.struct.{EventFlinkInput, FlinkContext}
-import cn.nwcd.presales.patpat.entity.StockRawEvent
+import cn.nwcd.presales.patpat.entity.{StockRawEvent, StockTxEvent}
 import org.apache.flink.api.common.eventtime.{SerializableTimestampAssigner, WatermarkStrategy}
 import org.apache.flink.api.common.serialization.SimpleStringSchema
 import org.apache.flink.api.scala.createTypeInformation
@@ -23,17 +23,32 @@ trait Input extends EventFlinkInput {
     inputProperties.setProperty(ConsumerConfigConstants.STREAM_INITIAL_POSITION, "LATEST")
 
     val kinesisConsumer = new FlinkKinesisConsumer[String](Params.StockInputStream, new SimpleStringSchema, inputProperties)
+    val kinesisConsumer2 = new FlinkKinesisConsumer[String](Params.StockInputStream2, new SimpleStringSchema, inputProperties)
+
     val kinesisStream = env.addSource(kinesisConsumer)
       .disableChaining
       .name("stock_raw_events")
 
+    val kinesisStream2 = env.addSource(kinesisConsumer2)
+      .disableChaining
+      .name("stock_tx_raw_events")
+
     val jsonParser = new ObjectMapper()
+
     val events = kinesisStream.map(item => {
       val jsonNode = jsonParser.readValue(item, classOf[JsonNode])
       val event_time = jsonNode.get("event_time").asText
       val name = jsonNode.get("name").asText
       val price = jsonNode.get("price").asDouble
       StockRawEvent(event_time, name, price)
+    }).disableChaining().name("toJson")
+
+    val events2 = kinesisStream2.map(item => {
+      val jsonNode = jsonParser.readValue(item, classOf[JsonNode])
+      val event_time = jsonNode.get("event_time").asText
+      val name = jsonNode.get("name").asText
+      val tx_name = jsonNode.get("tx_name").asText
+      StockTxEvent(event_time, name, tx_name)
     }).disableChaining().name("toJson")
 
     val watermarkEvent = events.assignTimestampsAndWatermarks(
@@ -45,6 +60,37 @@ trait Input extends EventFlinkInput {
             }
           })).disableChaining().name("withWatermark")
 
+    val watermarkEvent2 = events2.assignTimestampsAndWatermarks(
+      WatermarkStrategy.forMonotonousTimestamps[StockTxEvent]
+        .withTimestampAssigner(
+          new SerializableTimestampAssigner[StockTxEvent] {
+            override def extractTimestamp(t: StockTxEvent, l: Long): Long = {
+              StockTxEvent.ts(t)
+            }
+          })).disableChaining().name("withWatermark")
+
     setDataSet("stock_input_events", watermarkEvent)
+    setDataSet("stock_tx_events", watermarkEvent2)
   }
+//
+//  def inputEvent[T](streamName:String, inputProperties:Properties,f:(String)=>T, ts:(T)=>Long) = {
+//    val kinesisConsumer = new FlinkKinesisConsumer[String](streamName, new SimpleStringSchema, inputProperties)
+//
+//    val kinesisStream = env.addSource(kinesisConsumer)
+//      .disableChaining
+//      .name(streamName)
+//
+//    val jsonParser = new ObjectMapper()
+//
+//    val events = kinesisStream.map(item => f(item)).disableChaining().name("toJson")
+//
+//    val watermarkEvent = events.assignTimestampsAndWatermarks(
+//      WatermarkStrategy.forMonotonousTimestamps[T]
+//        .withTimestampAssigner(
+//          new SerializableTimestampAssigner[T] {
+//            override def extractTimestamp(t: T, l: Long): Long = {
+//             ts(t)
+//            }
+//          })).disableChaining().name("withWatermark")
+//  }
 }

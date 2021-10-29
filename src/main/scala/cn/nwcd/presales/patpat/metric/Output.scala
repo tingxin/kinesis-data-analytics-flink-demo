@@ -1,7 +1,7 @@
 package cn.nwcd.presales.patpat.metric
 
 import cn.nwcd.presales.common.struct.{EventFlinkOutput, FlinkContext}
-import cn.nwcd.presales.patpat.entity.{StockEvent, StockRawEvent}
+import cn.nwcd.presales.patpat.entity.{StockEvent, StockEventPre, StockRawEvent}
 import org.apache.flink.api.common.serialization.SimpleStringEncoder
 import org.apache.flink.api.scala.createTypeInformation
 import org.apache.flink.core.fs.Path
@@ -20,12 +20,12 @@ trait Output extends EventFlinkOutput {
 
   override def output(): Unit = {
     super.output()
-    val ds: DataStream[StockEvent] = getDataSet[DataStream[StockEvent]]("joined_ds")
+    val ds: DataStream[StockEventPre] = getDataSet[DataStream[StockEventPre]]("joined_ds")
     output2S3(ds)
 
   }
 
-  def output2S3(ds: DataStream[StockEvent]):Unit = {
+  def output2S3(ds: DataStream[StockEventPre]):Unit = {
     val strDs = ds.map(item=>item.toString).disableChaining().name("toText")
     val sink:StreamingFileSink[String] = StreamingFileSink.forRowFormat(new Path(Params.OutputS3SinkPath),
       new SimpleStringEncoder[String]("UTF-8")).build()

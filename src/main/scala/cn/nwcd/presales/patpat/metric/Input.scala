@@ -2,6 +2,7 @@ package cn.nwcd.presales.patpat.metric
 
 import cn.nwcd.presales.common.struct.{EventFlinkInput, FlinkContext}
 import cn.nwcd.presales.patpat.entity.{StockRawEvent, StockTxEvent}
+import com.amazonaws.services.kinesisanalytics.runtime.KinesisAnalyticsRuntime
 import org.apache.flink.api.common.eventtime.{SerializableTimestampAssigner, WatermarkStrategy}
 import org.apache.flink.api.common.serialization.SimpleStringSchema
 import org.apache.flink.api.scala.createTypeInformation
@@ -16,11 +17,18 @@ trait Input extends EventFlinkInput {
   this: FlinkContext =>
 
   override def input(): Unit = {
+    val applicationProperties = KinesisAnalyticsRuntime.getApplicationProperties
+    val flinkProperties = applicationProperties.get("FlinkApplicationProperties")
+    if (flinkProperties == null) throw new RuntimeException("Unable to load FlinkApplicationProperties properties from the Kinesis Analytics Runtime.")
+    val beginTimeStamp = flinkProperties.getProperty("beginTimeStamp")
+
+
     val inputProperties = new Properties
     inputProperties.setProperty("aws.region", Params.REGION)
     inputProperties.setProperty(AWSConfigConstants.AWS_CREDENTIALS_PROVIDER, "AUTO")
     inputProperties.setProperty(ConsumerConfigConstants.SHARD_GETRECORDS_INTERVAL_MILLIS, "500")
-    inputProperties.setProperty(ConsumerConfigConstants.STREAM_INITIAL_POSITION, "LATEST")
+    inputProperties.setProperty(ConsumerConfigConstants.STREAM_INITIAL_POSITION, "AT_TIMESTAMP")
+    inputProperties.setProperty(ConsumerConfigConstants.STREAM_INITIAL_TIMESTAMP, beginTimeStamp)
 
     val kinesisConsumer = new FlinkKinesisConsumer[String](Params.StockInputStream, new SimpleStringSchema, inputProperties)
     val kinesisConsumer2 = new FlinkKinesisConsumer[String](Params.StockInputStream2, new SimpleStringSchema, inputProperties)

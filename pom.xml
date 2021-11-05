@@ -99,7 +99,22 @@
             <artifactId>flink-connector-jdbc_${scala.binary.version}</artifactId>
             <version>${flink.version}</version>
         </dependency>
+        <!-- barry -->
 
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-streaming-java_${scala.binary.version}</artifactId>
+            <version>${flink.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.amazonaws</groupId>
+            <artifactId>aws-kinesisanalytics-flink</artifactId>
+            <version>${kda.version}</version>
+        </dependency>
+
+        <!-- barry -->
         <!-- see http://apache-flink.147419.n8.nabble.com/flink-1-11-td4471.html#a4552 when run in intellij -->
         <dependency>
             <groupId>org.apache.flink</groupId>

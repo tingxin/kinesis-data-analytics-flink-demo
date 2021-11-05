@@ -1,13 +1,18 @@
 package cn.nwcd.presales.patpat.metric
 
 import cn.nwcd.presales.common.struct.FlinkContext
+import com.amazonaws.services.kinesisanalytics.runtime.KinesisAnalyticsRuntime
 import org.apache.flink.api.common.restartstrategy.RestartStrategies
+import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.api.environment.CheckpointConfig.ExternalizedCheckpointCleanup
+import org.apache.flink.streaming.api.environment.LocalStreamEnvironment
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.apache.flink.streaming.api.windowing.time.Time
 
 import java.time.ZoneId
+import java.util
+import java.util.{HashMap, Map, Properties}
 import java.util.concurrent.TimeUnit
 
 trait Context extends FlinkContext {

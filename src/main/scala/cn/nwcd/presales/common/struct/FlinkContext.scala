@@ -39,11 +39,7 @@ trait FlinkContext extends Logging {
   }
 
   def run(name: String = "Flink App"): Unit = {
-    val envType = if(config.has(Constants.ENV)) {
-      EnvType.withName(config.getString(Constants.ENV).toUpperCase())
-    } else {
-      EnvType.withName("STREAM")
-    }
+    val envType =EnvType.withName("STREAM")
 //    env.registerJobListener(JobMetaListener(name))
     print("**run " + envType.toString)
 

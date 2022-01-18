@@ -17,11 +17,11 @@ trait Input extends EventFlinkInput {
   this: FlinkContext =>
 
   override def input(): Unit = {
-    val applicationProperties = KinesisAnalyticsRuntime.getApplicationProperties
-    val flinkProperties = applicationProperties.get("FlinkApplicationProperties")
-    if (flinkProperties == null) throw new RuntimeException("Unable to load FlinkApplicationProperties properties from the Kinesis Analytics Runtime.")
-    val beginTimeStamp = flinkProperties.getProperty("beginTimeStamp")
-    print("eg for get app property %s".format(beginTimeStamp))
+//    val applicationProperties = KinesisAnalyticsRuntime.getApplicationProperties
+//    val flinkProperties = applicationProperties.get("FlinkApplicationProperties")
+//    if (flinkProperties == null) throw new RuntimeException("Unable to load FlinkApplicationProperties properties from the Kinesis Analytics Runtime.")
+//    val beginTimeStamp = flinkProperties.getProperty("beginTimeStamp")
+//    print("eg for get app property %s".format(beginTimeStamp))
 
 
     val inputProperties = new Properties

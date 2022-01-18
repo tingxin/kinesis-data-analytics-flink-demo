@@ -21,7 +21,7 @@ trait FlinkContext extends Logging {
   def init(args: Array[String]): Unit = {
     val params = ParameterTool.fromArgs(args)
     logInfo("Finished Params")
-    config = UnionConfig(params)
+//    config = UnionConfig(params)
     logInfo("FlinkContext finished init ...")
     initEnv()
     initTEnv()

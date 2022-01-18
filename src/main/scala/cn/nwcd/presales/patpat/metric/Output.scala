@@ -2,19 +2,11 @@ package cn.nwcd.presales.patpat.metric
 
 import com.amazonaws.services.kinesisanalytics.flink.connectors.producer.FlinkKinesisFirehoseProducer
 import cn.nwcd.presales.common.struct.{EventFlinkOutput, FlinkContext}
-import cn.nwcd.presales.patpat.entity.{StockEvent, StockEventPre, StockRawEvent}
-import org.apache.flink.api.common.serialization.{SimpleStringEncoder, SimpleStringSchema}
-import org.apache.flink.api.scala.createTypeInformation
-import org.apache.flink.core.fs.Path
-import org.apache.flink.streaming.api.functions.sink.filesystem.StreamingFileSink
+import cn.nwcd.presales.patpat.entity.{DoubleJsonSchema, OrderEventSchema, OrderRawEvent}
+import cn.nwcd.presales.patpat.metric.Params.OutputIndexStream
 import org.apache.flink.streaming.api.scala.DataStream
-import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer
-import org.apache.flink.connector.jdbc.JdbcConnectionOptions
-import org.apache.flink.connector.jdbc.JdbcExecutionOptions
-import org.apache.flink.connector.jdbc.JdbcSink
-import org.apache.flink.streaming.connectors.kinesis.config.ConsumerConfigConstants
-
-import java.sql.PreparedStatement
+import org.apache.flink.streaming.connectors.kinesis.FlinkKinesisProducer
+import org.apache.flink.streaming.connectors.kinesis.config.{AWSConfigConstants}
 import java.util.Properties
 
 trait Output extends EventFlinkOutput {
@@ -22,27 +14,44 @@ trait Output extends EventFlinkOutput {
 
   override def output(): Unit = {
     super.output()
-    val ds: DataStream[StockEventPre] = getDataSet[DataStream[StockEventPre]]("joined_ds")
-    output2S3(ds)
+
+    val dwdDs: DataStream[OrderRawEvent] = getDataSet[DataStream[OrderRawEvent]]("dwd_orders")
+    output2Firehouse(dwdDs)
+
+    val amountDs: DataStream[Double] = getDataSet[DataStream[Double]]("total_amount")
+    output2Kinesis(amountDs)
 
   }
 
-  def output2S3(ds: DataStream[StockEventPre]):Unit = {
-    val strDs = ds.map(item=>item.toString).disableChaining().name("toText")
-    val sink:StreamingFileSink[String] = StreamingFileSink.forRowFormat(new Path(Params.OutputS3SinkPath),
-      new SimpleStringEncoder[String]("UTF-8")).build()
-    strDs.addSink(sink).name("saveToS3")
+  def output2Kinesis(ds: DataStream[Double]):Unit = {
+    val producerConfig = new Properties()
+    // Required configs
+    producerConfig.put(AWSConfigConstants.AWS_REGION, Params.REGION)
+//    producerConfig.put(AWSConfigConstants.AWS_ACCESS_KEY_ID, "aws_access_key_id")
+//    producerConfig.put(AWSConfigConstants.AWS_SECRET_ACCESS_KEY, "aws_secret_access_key")
+    // Optional KPL configs
+    producerConfig.put("AggregationMaxCount", "4294967295")
+    producerConfig.put("CollectionMaxCount", "1000")
+    producerConfig.put("RecordTtl", "30000")
+    producerConfig.put("RequestTimeout", "6000")
+    producerConfig.put("ThreadPoolSize", "15")
+
+    val kinesis = new FlinkKinesisProducer[Double](new DoubleJsonSchema("amount"), producerConfig)
+    kinesis.setFailOnError(true)
+    kinesis.setDefaultStream(OutputIndexStream)
+    kinesis.setDefaultPartition("0")
+
+    ds.addSink(kinesis)
   }
 
 
-   def output2Firehouse(ds: DataStream[StockEventPre]) = {
+   def output2Firehouse(ds: DataStream[OrderRawEvent]) = {
 
     val inputProperties = new Properties
      inputProperties.setProperty("aws.region", Params.REGION)
 
-    val sink = new FlinkKinesisFirehoseProducer[String](Params.OutputFirehouse, new SimpleStringSchema(), inputProperties)
-     val strDs = ds.map(item=>item.toString).disableChaining().name("toText")
-     strDs.addSink(sink).name("saveToFirehouse")
+    val sink = new FlinkKinesisFirehoseProducer[OrderRawEvent](Params.OutputFirehouse, new OrderEventSchema(), inputProperties)
+     ds.addSink(sink).name("saveToFirehouse")
   }
 
 }

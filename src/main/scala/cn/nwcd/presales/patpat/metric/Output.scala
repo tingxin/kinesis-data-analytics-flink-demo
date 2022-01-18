@@ -31,7 +31,7 @@ trait Output extends EventFlinkOutput {
 //    producerConfig.put(AWSConfigConstants.AWS_SECRET_ACCESS_KEY, "aws_secret_access_key")
     // Optional KPL configs
     producerConfig.put("AggregationMaxCount", "4294967295")
-    producerConfig.put("CollectionMaxCount", "1000")
+    producerConfig.put("CollectionMaxCount", "100")
     producerConfig.put("RecordTtl", "30000")
     producerConfig.put("RequestTimeout", "6000")
     producerConfig.put("ThreadPoolSize", "15")

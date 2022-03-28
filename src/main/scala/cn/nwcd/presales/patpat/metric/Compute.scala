@@ -20,7 +20,6 @@ trait Compute extends EventFlinkCompute {
     super.compute()
     val rawEventDs: DataStream[OrderRawEvent] = getDataSet[DataStream[OrderRawEvent]]("input_events")
     val dwdDs = rawEventDs.filter(item => item.amount < 1000)
-
     setDataSet("dwd_orders", dwdDs)
 
     // 指标计算

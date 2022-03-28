@@ -5,8 +5,10 @@ import cn.nwcd.presales.common.struct.{EventFlinkOutput, FlinkContext}
 import cn.nwcd.presales.patpat.entity.{DoubleJsonSchema, OrderEventSchema, OrderRawEvent}
 import cn.nwcd.presales.patpat.metric.Params.OutputIndexStream
 import org.apache.flink.streaming.api.scala.DataStream
+import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer
 import org.apache.flink.streaming.connectors.kinesis.FlinkKinesisProducer
-import org.apache.flink.streaming.connectors.kinesis.config.{AWSConfigConstants}
+import org.apache.flink.streaming.connectors.kinesis.config.AWSConfigConstants
+
 import java.util.Properties
 
 trait Output extends EventFlinkOutput {
@@ -14,44 +16,16 @@ trait Output extends EventFlinkOutput {
 
   override def output(): Unit = {
     super.output()
-
-    val dwdDs: DataStream[OrderRawEvent] = getDataSet[DataStream[OrderRawEvent]]("dwd_orders")
-    output2Firehouse(dwdDs)
-
+    
     val amountDs: DataStream[Double] = getDataSet[DataStream[Double]]("total_amount")
-    output2Kinesis(amountDs)
+    outputKafka(amountDs)
 
   }
 
-  def output2Kinesis(ds: DataStream[Double]):Unit = {
-    val producerConfig = new Properties()
-    // Required configs
-    producerConfig.put(AWSConfigConstants.AWS_REGION, Params.REGION)
-//    producerConfig.put(AWSConfigConstants.AWS_ACCESS_KEY_ID, "aws_access_key_id")
-//    producerConfig.put(AWSConfigConstants.AWS_SECRET_ACCESS_KEY, "aws_secret_access_key")
-    // Optional KPL configs
-    producerConfig.put("AggregationMaxCount", "4294967295")
-    producerConfig.put("CollectionMaxCount", "100")
-    producerConfig.put("RecordTtl", "30000")
-    producerConfig.put("RequestTimeout", "6000")
-    producerConfig.put("ThreadPoolSize", "15")
-
-    val kinesis = new FlinkKinesisProducer[Double](new DoubleJsonSchema("amount"), producerConfig)
-    kinesis.setFailOnError(true)
-    kinesis.setDefaultStream(OutputIndexStream)
-    kinesis.setDefaultPartition("0")
-
-    ds.addSink(kinesis)
-  }
-
-
-   def output2Firehouse(ds: DataStream[OrderRawEvent]) = {
-
-    val inputProperties = new Properties
-     inputProperties.setProperty("aws.region", Params.REGION)
-
-    val sink = new FlinkKinesisFirehoseProducer[OrderRawEvent](Params.OutputFirehouse, new OrderEventSchema(), inputProperties)
-     ds.addSink(sink).name("saveToFirehouse")
+  def outputKafka(ds: DataStream[Double]):Unit = {
+    val brokerList = "b-1.demo-cluster-1.9z77lu.c4.kafka.cn-northwest-1.amazonaws.com.cn:9092,b-2.demo-cluster-1.9z77lu.c4.kafka.cn-northwest-1.amazonaws.com.cn:9092,b-3.demo-cluster-1.9z77lu.c4.kafka.cn-northwest-1.amazonaws.com.cn:9092"
+    val kafka = new FlinkKafkaProducer[Double](brokerList,"metric",new DoubleJsonSchema("amount"))
+    ds.addSink(kafka)
   }
 
 }

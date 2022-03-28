@@ -1,7 +1,7 @@
 package cn.nwcd.presales.patpat.metric
 
 import cn.nwcd.presales.common.struct.{EventFlinkInput, FlinkContext}
-import cn.nwcd.presales.patpat.entity.{OrderRawEvent}
+import cn.nwcd.presales.patpat.entity.OrderRawEvent
 import com.amazonaws.services.kinesisanalytics.runtime.KinesisAnalyticsRuntime
 import org.apache.flink.api.common.eventtime.{SerializableTimestampAssigner, WatermarkStrategy}
 import org.apache.flink.api.common.serialization.SimpleStringSchema
@@ -10,6 +10,7 @@ import org.apache.flink.streaming.connectors.kinesis.FlinkKinesisConsumer
 import org.apache.flink.streaming.connectors.kinesis.config.{AWSConfigConstants, ConsumerConfigConstants}
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.JsonNode
+import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer
 
 import java.util.Properties
 
@@ -30,15 +31,16 @@ trait Input extends EventFlinkInput {
     inputProperties.setProperty(ConsumerConfigConstants.SHARD_GETRECORDS_INTERVAL_MILLIS, "500")
     inputProperties.setProperty(ConsumerConfigConstants.STREAM_INITIAL_POSITION, "LATEST")
 
-    val kinesisConsumer = new FlinkKinesisConsumer[String](Params.InputStream, new SimpleStringSchema, inputProperties)
-    val kinesisStream = env.addSource(kinesisConsumer)
+    val kafkaConsumer =new FlinkKafkaConsumer[String](Params.InputStream, new SimpleStringSchema(), inputProperties)
+    val inputStream = env.addSource(kafkaConsumer)
       .disableChaining
       .name("raw_events")
 
 
     val jsonParser = new ObjectMapper()
 
-    val events = kinesisStream.map(item => {
+    val events = inputStream.map(item => {
+      println(item)
       val jsonNode = jsonParser.readValue(item, classOf[JsonNode])
       val create_time = jsonNode.get("create_time").asLong
       val update_time = jsonNode.get("update_time").asLong
